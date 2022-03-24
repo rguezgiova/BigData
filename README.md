@@ -216,7 +216,58 @@ htmllogs.take(5).foreach(f => println(f._1 + " - " + f._2))
 
 Usando MapReduce, cuenta el número de peticiones de cada usuario, es decir, las veces que cada usuario aparece en una línea de un log. Para ello:
 
-A) Usa un Map para crear un RDD que contenga el par (ID, 1), siendo la clave el ID y el Value el número 1. Recordad que el campo ID es el tercer elemento de cada línea.
+a. Usa un Map para crear un RDD que contenga el par (ID, 1), siendo la clave el ID y el Value el número 1. Recordad que el campo ID es el tercer elemento de cada línea.
+
+```
+val requests = logs.map(line => line.split(" ")).map(word => (word (2), 1))
+requests: org.apache.spark.rdd.RDD[(String, Int)] = MapPartitionsRDD[6] at map at <console>:31
+```
+
+b. Usa un Reduce para sumar los valores correspondientes a cada userid.
+
+```
+val reducerequests = requests.reduceByKey((v1, v2) => v1 + v2)
+reducerequests: org.apache.spark.rdd.RDD[(String, Int)] = ShuffledRDD[8] at reduceByKey at <console>:33
+```
+
+Muestra los id de usuario y el número de accesos para los 10 usuarios con mayor número de accesos. Para ello:
+
+a. Utiliza un map() para intercambiar la Clave por el Valor.
+
+```
+val swaprequests = reducerequests.map(line => line.swap)
+swaprequests: org.apache.spark.rdd.RDD[(Int, String)] = MapPartitionsRDD[9] at map at <console>:35
+```
+
+Utiliza la función vista en teoría para ordenar un RDD. Ten en cuenta que queremos mostrar los datos en orden descendiente (De mayor a menor número de peticiones). Recuerda que el RDD debe estar en la misma forma que al inicio, es decir, con clave: userid y valor: nº de peticiones.
+
+```
+swaprequests.sortByKey(false).map(line => line.swap).take(10).foreach(println)
+(193,1603)                                                                      
+(77,1547)
+(119,1540)
+(34,1526)
+(182,1524)
+(64,1508)
+(189,1508)
+(20,1502)
+(173,1500)
+(17,1500)
+```
+
+Crea un RDD donde la clave sea el userid y el valor sea una lista de ips a las que el userid se ha conectado (es decir, agrupar las IPs por userID). Ayúdate de la función groupByKey() para conseguirlo.
+
+```
+val userips = logs.map(line => line.split(" ")).map(word => (word(2), word(0))).groupByKey()
+userips: org.apache.spark.rdd.RDD[(String, Iterable[String])] = ShuffledRDD[16] at groupByKey at <console>:31
+```
+
+```
+userips.take(10)
+res3: Array[(String, Iterable[String])] = Array((79844,CompactBuffer(136.132.254.160, 136.132.254.160, 53.251.68.51, 53.251.68.51)), (16669,CompactBuffer(23.137.191.64, 23.137.191.64)), (99640,CompactBuffer(207.61.107.245, 207.61.107.245, 17.159.12.204, 17.159.12.204, 96.24.214.109, 96.24.214.109, 123.79.96.8, 123.79.96.8, 20.117.86.221, 20.117.86.221, 142.96.254.175, 142.96.254.175, 35.107.69.206, 35.107.69.206, 208.153.228.87, 208.153.228.87, 67.92.22.4, 67.92.22.4, 15.209.169.137, 15.209.169.137, 15.209.169.137, 15.209.169.137, 51.239.242.13, 51.239.242.13, 51.239.242.13, 51.239.242.13, 18.76.240.35, 18.76.240.35, 107.125.111.173, 107.125.111.173, 245.141.100.16, 245.141.100.16, 215.150.177.226, 215.150.177.226, 215.150.177.226, 215.150.177.226, 39.175.103.131, 39.175.103.131, 102.17...
+```
+
+Si te sobra tiempo prueba a mostrar el RDD resultante por pantalla de forma que tenga una estructura como la siguiente:
 
 ```
 
