@@ -1,5 +1,3 @@
-# Spark
-
 Crea un RDD llamado “relato” que contenga el contenido del fichero utilizando el método “textFile”
 
 ```
