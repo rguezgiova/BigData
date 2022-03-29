@@ -355,5 +355,266 @@ Hass, Julie
 Utilizando la terminal, introduce dicho dataset en el HDFS.
 
 ```bash
+[cloudera@quickstart ~]$ hdfs dfs -put "/home/cloudera/BIT/data/shakespeare" /user/cloudera
+```
 
+Ahora vamos a realizar un análisis al estilo de escritura de Shakespeare, para ello nos interesa conocer las palabras más repetidas en sus obras. Muestra por pantalla las 100 palabras que más veces aparecen en las obras de Shakespeare, junto con la frecuencia de aparición de cada una, ordenadas descendientemente (de mayor a menor frecuencia de aparición).
+
+```
+scala> val logs = sc.textFile("shakespeare/*")
+logs: org.apache.spark.rdd.RDD[String] = shakespeare/* MapPartitionsRDD[1] at textFile at <console>:27
+
+scala> val splittedlogs = logs.flatMap(line => line.split(" "))
+splittedlogs: org.apache.spark.rdd.RDD[String] = MapPartitionsRDD[4] at flatMap at <console>:29
+
+scala> val wordslog = splittedlogs.map(word => (word, 1)).reduceByKey(_ + _)
+wordslog: org.apache.spark.rdd.RDD[(String, Int)] = ShuffledRDD[6] at reduceByKey at <console>:31
+
+scala> val countlog = wordslog.map(word => word.swap).sortByKey(false).map(word => word.swap)
+countlog: org.apache.spark.rdd.RDD[(String, Int)] = MapPartitionsRDD[11] at map at <console>:33
+
+scala> countlog.take(100).foreach{case(w,n) => println("Word: " + w + ", Repeated: " + n)}
+Word: , Repeated: 64595
+Word: the, Repeated: 25239
+Word: and, Repeated: 18805
+Word: to, Repeated: 16567
+Word: of, Repeated: 16318
+Word: I, Repeated: 15223
+Word: a, Repeated: 13202
+Word: my, Repeated: 11181
+Word: in, Repeated: 10221
+Word: you, Repeated: 9113
+Word: is, Repeated: 8130
+Word: that, Repeated: 7780
+Word: not, Repeated: 7125
+Word: with, Repeated: 7051
+Word: his, Repeated: 6599
+Word: be, Repeated: 6222
+Word: your, Repeated: 6119
+Word: 	And, Repeated: 5955
+Word: for, Repeated: 5843
+Word: have, Repeated: 5314
+Word: it, Repeated: 5133
+Word: this, Repeated: 4984
+Word: he, Repeated: 4978
+Word: me, Repeated: 4863
+Word: thou, Repeated: 4482
+Word: as, Repeated: 4423
+Word: will, Repeated: 4151
+Word: thy, Repeated: 3832
+Word: but, Repeated: 3721
+Word: her, Repeated: 3164
+Word: so, Repeated: 3151
+Word: him, Repeated: 3122
+Word: shall, Repeated: 3107
+Word: all, Repeated: 3097
+Word: by, Repeated: 3025
+Word: are, Repeated: 3023
+Word: do, Repeated: 2986
+Word: our, Repeated: 2782
+Word: 	To, Repeated: 2732
+Word: we, Repeated: 2619
+Word: on, Repeated: 2594
+Word: 	The, Repeated: 2581
+Word: no, Repeated: 2574
+Word: 	I, Repeated: 2549
+Word: from, Repeated: 2427
+Word: 	That, Repeated: 2352
+Word: at, Repeated: 2319
+Word: what, Repeated: 2300
+Word: good, Repeated: 2095
+Word: their, Repeated: 2093
+Word: if, Repeated: 2065
+Word: would, Repeated: 2036
+Word: am, Repeated: 2012
+Word: they, Repeated: 2001
+Word: was, Repeated: 1990
+Word: she, Repeated: 1927
+Word: or, Repeated: 1875
+Word: thee, Repeated: 1821
+Word: 	[Enter, Repeated: 1747
+Word: more, Repeated: 1677
+Word: hath, Repeated: 1668
+Word: you,, Repeated: 1620
+Word: an, Repeated: 1605
+Word: KING, Repeated: 1600
+Word: like, Repeated: 1576
+Word: 	But, Repeated: 1522
+Word: make, Repeated: 1515
+Word: than, Repeated: 1475
+Word: let, Repeated: 1418
+Word: should, Repeated: 1418
+Word: which, Repeated: 1401
+Word: upon, Repeated: 1391
+Word: one, Repeated: 1388
+Word: may, Repeated: 1373
+Word: did, Repeated: 1368
+Word: must, Repeated: 1359
+Word: were, Repeated: 1352
+Word: 	For, Repeated: 1348
+Word: me,, Repeated: 1342
+Word: know, Repeated: 1339
+Word: them, Repeated: 1336
+Word: such, Repeated: 1279
+Word: had, Repeated: 1274
+Word: when, Repeated: 1269
+Word: love, Repeated: 1263
+Word: now, Repeated: 1251
+Word: 	As, Repeated: 1189
+Word: I'll, Repeated: 1157
+Word: some, Repeated: 1126
+Word: see, Repeated: 1120
+Word: come, Repeated: 1098
+Word: us, Repeated: 1098
+Word: these, Repeated: 1072
+Word: OF, Repeated: 1066
+Word: how, Repeated: 1046
+Word: can, Repeated: 1036
+Word: then, Repeated: 1029
+Word: give, Repeated: 1019
+Word: yet, Repeated: 1012
+Word: 	A, Repeated: 1012
+```
+
+El análisis anterior no es todo lo completo que una situación real nos puede requerir, palabras que no nos aportan información alguna. A este tipo de palabras se les conoce como palabras vacías (StopWords), y nos interesa eliminarlas de nuestro análisis.
+También tenemos que tener en cuenta que, para hacer nuestro análisis, no nos interesan ni las líneas que solo contengan espacios en blanco ni las palabras que estén formadas por una única letra. Tampoco haremos distinción entre mayúsculas ni minúsculas.
+
+```
+scala> val logs = sc.textFile("shakespeare/*")
+logs: org.apache.spark.rdd.RDD[String] = shakespeare/* MapPartitionsRDD[1] at textFile at <console>:27
+
+scala> val lowerlog = logs.map(line => line.replaceAll("[^a-zA-Z]+", " "))
+lowerlog: org.apache.spark.rdd.RDD[String] = MapPartitionsRDD[12] at map at <console>:29
+
+scala> val splitlog = lowerlog.flatMap(line => line.split(" "))
+splitlog: org.apache.spark.rdd.RDD[String] = MapPartitionsRDD[13] at flatMap at <console>:31
+
+scala> val lowercaselog = splitlog.map(word => word.toLowerCase())
+lowercaselog: org.apache.spark.rdd.RDD[String] = MapPartitionsRDD[14] at map at <console>:33
+
+scala> val stopwords = sc.textFile("stop-word-list.csv")
+stopwords: org.apache.spark.rdd.RDD[String] = stop-word-list.csv MapPartitionsRDD[16] at textFile at <console>:27
+
+scala> val splitstopwords = stopwords.flatMap(line => line.split(","))
+splitstopwords: org.apache.spark.rdd.RDD[String] = MapPartitionsRDD[17] at flatMap at <console>:29
+
+scala> val replacestopwords = splitstopwords.map(word => word.replace(" ", ""))
+replacestopwords: org.apache.spark.rdd.RDD[String] = MapPartitionsRDD[18] at map at <console>:31
+
+scala> val parallelizelog = lowercaselog.subtract(sc.parallelize(Seq(" ")))
+parallelizelog: org.apache.spark.rdd.RDD[String] = MapPartitionsRDD[24] at subtract at <console>:35
+
+scala> val subtractstopwords = parallelizelog.subtract(replacestopwords)
+subtractstopwords: org.apache.spark.rdd.RDD[String] = MapPartitionsRDD[28] at subtract at <console>:43
+
+scala> val reducelog = subtractstopwords.map(word => (word, 1)).reduceByKey(_ + _)
+reducelog: org.apache.spark.rdd.RDD[(String, Int)] = ShuffledRDD[30] at reduceByKey at <console>:45
+
+scala> val swaplog = reducelog.map(word => word.swap).sortByKey(false).map(value => value.swap)
+swaplog: org.apache.spark.rdd.RDD[(String, Int)] = MapPartitionsRDD[35] at map at <console>:47
+
+scala> val finallog = swaplog.filter(word => word._1.size != 1)
+finallog: org.apache.spark.rdd.RDD[(String, Int)] = MapPartitionsRDD[36] at filter at <console>:49
+
+scala> finallog.take(100).foreach(println)
+(,133899)
+(thou,5874)
+(thy,4273)
+(shall,3738)
+(king,3488)
+(lord,3392)
+(thee,3385)
+(sir,3033)
+(now,2949)
+(good,2945)
+(come,2602)
+(ll,2490)
+(here,2433)
+(more,2428)
+(enter,2428)
+(well,2401)
+(love,2379)
+(man,2089)
+(hath,2034)
+(one,1961)
+(upon,1849)
+(know,1816)
+(go,1773)
+(make,1760)
+(see,1541)
+(out,1492)
+(such,1482)
+(first,1470)
+(give,1411)
+(henry,1361)
+(take,1263)
+(mine,1244)
+(speak,1232)
+(duke,1216)
+(time,1190)
+(up,1179)
+(heart,1143)
+(tell,1120)
+(father,1114)
+(think,1105)
+(much,1093)
+(never,1087)
+(doth,1082)
+(exeunt,1061)
+(lady,1049)
+(queen,1042)
+(men,1022)
+(day,1008)
+(night,979)
+(death,977)
+(exit,976)
+(art,968)
+(look,960)
+(god,956)
+(great,952)
+(life,931)
+(hear,926)
+(away,903)
+(hand,902)
+(act,891)
+(made,888)
+(master,878)
+(sweet,867)
+(before,864)
+(true,856)
+(fair,855)
+(thus,830)
+(scene,825)
+(very,823)
+(mistress,817)
+(again,802)
+(st,792)
+(prince,786)
+(eyes,785)
+(ay,777)
+(pray,777)
+(two,753)
+(call,753)
+(being,744)
+(fear,744)
+(gloucester,742)
+(honour,737)
+(old,737)
+(second,725)
+(world,717)
+(son,715)
+(name,709)
+(done,707)
+(blood,706)
+(heaven,700)
+(down,695)
+(poor,691)
+(er,689)
+(leave,686)
+(whose,679)
+(nothing,675)
+(though,675)
+(till,673)
+(both,672)
+(even,652
 ```
