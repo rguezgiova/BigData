@@ -1,3 +1,7 @@
+## Ejercicio: Comenzando con los RDDs
+
+### A - Exploración de fichero plano 1
+
 Crea un RDD llamado “relato” que contenga el contenido del fichero utilizando el método “textFile”
 
 ```
@@ -47,6 +51,8 @@ Two roads diverged in a wood, and I--
 I took the one less traveled by,
 And that has made all the difference.
 ```
+
+### B- Exploración de fichero plano 2
 
 Crea una variable que contenga la ruta del fichero, por ejemplo file:/home/BIT/data/weblogs/2013-09-15.log.
 
@@ -103,6 +109,8 @@ Mapea el contenido de logs a un RDD “logwords” de arrays de palabras de cada
 val logwords = logs.map(line => line.split(" "))
 logwords: org.apache.spark.rdd.RDD[Array[String]] = MapPartitionsRDD[8] at map at <console>:31
 ```
+
+### C- Exploración de un conjunto de ficheros planos en una carpeta
 
 Crea un nuevo RDD llamado “ips” a partir del RDD logs que contenga solamente las ips de cada línea (primer elemento de cada fila).
 
@@ -212,6 +220,10 @@ htmllogs: org.apache.spark.rdd.RDD[(String, String)] = MapPartitionsRDD[8] at ma
 htmllogs.take(5).foreach(f => println(f._1 + " - " + f._2))
 ```
 
+## Ejercicio: Trabajando con PairRDDs
+
+### A- Trabajo con todos los datos de la carpeta de logs: "/home/BIT/data/weblogs"
+
 Usando MapReduce, cuenta el número de peticiones de cada usuario, es decir, las veces que cada usuario aparece en una línea de un log. Para ello:
 
 a. Usa un Map para crear un RDD que contenga el par (ID, 1), siendo la clave el ID y el Value el número 1. Recordad que el campo ID es el tercer elemento de cada línea.
@@ -228,7 +240,7 @@ val reducerequests = requests.reduceByKey((v1, v2) => v1 + v2)
 reducerequests: org.apache.spark.rdd.RDD[(String, Int)] = ShuffledRDD[8] at reduceByKey at <console>:33
 ```
 
-Muestra los id de usuario y el número de accesos para los 10 usuarios con mayor número de accesos. Para ello:
+Muestra los ids de usuario y el número de accesos para los 10 usuarios con mayor número de accesos. Para ello:
 
 a. Utiliza un map() para intercambiar la Clave por el Valor.
 
@@ -265,8 +277,83 @@ userips.take(10)
 res3: Array[(String, Iterable[String])] = Array((79844,CompactBuffer(136.132.254.160, 136.132.254.160, 53.251.68.51, 53.251.68.51)), (16669,CompactBuffer(23.137.191.64, 23.137.191.64)), (99640,CompactBuffer(207.61.107.245, 207.61.107.245, 17.159.12.204, 17.159.12.204, 96.24.214.109, 96.24.214.109, 123.79.96.8, 123.79.96.8, 20.117.86.221, 20.117.86.221, 142.96.254.175, 142.96.254.175, 35.107.69.206, 35.107.69.206, 208.153.228.87, 208.153.228.87, 67.92.22.4, 67.92.22.4, 15.209.169.137, 15.209.169.137, 15.209.169.137, 15.209.169.137, 51.239.242.13, 51.239.242.13, 51.239.242.13, 51.239.242.13, 18.76.240.35, 18.76.240.35, 107.125.111.173, 107.125.111.173, 245.141.100.16, 245.141.100.16, 215.150.177.226, 215.150.177.226, 215.150.177.226, 215.150.177.226, 39.175.103.131, 39.175.103.131, 102.17...
 ```
 
-Si te sobra tiempo prueba a mostrar el RDD resultante por pantalla de forma que tenga una estructura como la siguiente:
+### B- Trabajo con todos los datos de la carpeta de logs: "/home/BIT/data/accounts.cvs"
+
+Haz un JOIN entre los datos de logs del ejercicio pasado y los datos de accounts.csv, de manera que se obtenga un conjunto de datos en el que la clave sea el userid y como valor tenga la información del usuario seguido del número de visitas de cada usuario. Los pasos a ejecutar son:
+
+a. Haz un map() de los datos de accounts.cvs de forma que la Clave sea el userid y el Valor sea toda la línea, incluido el userid.
 
 ```
+scala> val accounts = sc.textFile(file).map(line => line.split(',')).map(account => (account(0), account))
+accounts: org.apache.spark.rdd.RDD[(String, Array[String])] = MapPartitionsRDD[3] at map at <console>:29
+```
+
+b. Haz un JOIN del RDD que acabas de crear con el que creaste en el paso anterior que contenía (userid, nº visitas).
+
+```
+scala> val userviews = accounts.join(requests)
+userviews: org.apache.spark.rdd.RDD[(String, (Array[String], Iterable[String]))] = MapPartitionsRDD[23] at join at <console>:37
+```
+
+c. Crea un RDD a partir del RDD anterior, que contenga el userid, número de visitas, nombre y apellido de las 5 primeras líneas.
+
+```
+scala> for (field <- userviews.take(5)){println(field._1, field._2._2, field._2._1(3), field._2._1(4))}
+22/03/29 12:48:24 WARN memory.TaskMemoryManager: leak 89.4 MB memory from org.apache.spark.util.collection.ExternalAppendOnlyMap@40f6673
+22/03/29 12:48:24 ERROR executor.Executor: Managed memory leak detected; size = 93741254 bytes, TID = 6
+(22620,1,Matthew,Gaskin)
+(22620,1,Matthew,Gaskin)
+(178,1,Kimberly,Mulder)
+(178,1,Kimberly,Mulder)
+(178,1,Kimberly,Mulder)
+```
+
+### C- Trabajo con más métodos sobre pares RDD
+
+Usa keyBy para crear un RDD con los datos de las cuentas, pero con el código postal como clave (noveno campo del fichero accounts.CSV).
+
+```
+scala> val accountscp = sc.textFile(file).map(line => line.split(",")).keyBy(_(8))
+accountscp: org.apache.spark.rdd.RDD[(String, Array[String])] = MapPartitionsRDD[20] at keyBy at <console>:29
+```
+
+Crea un RDD de pares con el código postal como la clave y una lista de nombres (Apellido, Nombre) de ese código postal como el valor. Sus lugares son el 5º y el 4º respectivamente.
+
+```
+scala> val accountsname = accountscp.mapValues(value => value(4) + ", " + value(3)).groupByKey()
+accountsname: org.apache.spark.rdd.RDD[(String, Iterable[String])] = ShuffledRDD[22] at groupByKey at <console>:31
+```
+
+Ordena los datos por código postal y luego, para los primeros 5 códigos postales, muestra el código y la lista de nombres cuyas cuentas están en ese código postal.
+
+```
+scala> accountsname.sortByKey().take(5).foreach{field => println("--- " + field._1); field._2.foreach(println)}
+--- 85000
+Willson, Leon
+Clark, Ronald
+Rush, Juanita
+Woodhouse, Roger
+Baptist, Colin
+--- 85002
+Whitmore, Alan
+Chandler, Tara
+Robinson, Diane
+Brown, Henry
+Sisson, Lacey
+--- 85004
+Morris, Eric
+Reiser, Hazel
+Gregg, Alicia
+Preston, Elizabeth
+Hass, Julie
+```
+
+## Ejercicios opcionales: Trabajando con PairRDDs
+
+### EJ1: Tareas a realizar
+
+Utilizando la terminal, introduce dicho dataset en el HDFS.
+
+```bash
 
 ```
