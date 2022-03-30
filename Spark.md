@@ -898,3 +898,11 @@ scala> tempOviedo.show()
 |        32|
 +----------+
 ```
+
+## Ejercicios opcionales: Trabajando con SparkSQL
+
+Utilizando la terminal, introduce el dataset 'simpsons.csv' en el HDFS.
+
+```bash
+[cloudera@quickstart ~]$ hdfs dfs -put "/home/cloudera/BIT/data/simpsons.csv" /user/cloudera
+```

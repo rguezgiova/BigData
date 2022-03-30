@@ -1,6 +1,6 @@
 Arranca el Shell de Pig en modo local.
 
-```
+```bash
 [cloudera@quickstart ~]$ pig -x local
 log4j:WARN No appenders could be found for logger (org.apache.hadoop.util.Shell).
 log4j:WARN Please initialize the log4j system properly.
@@ -41,7 +41,7 @@ grunt>
 
 Carga los datos en pig en una variable llamada “data”. Los nombres de las columnas deben ser (key, campana, fecha, tiempo, display, accion, cpc, pais, lugar). Los tipos de las columnas deben ser chararray excepto acction y cpc que son int.
 
-```
+```Pig Latin
 grunt> data = LOAD '/home/cloudera/ejercicios/pig/datos_pig.txt' as (
 >> key:chararray,
 >> campana:chararray,
@@ -57,32 +57,32 @@ grunt> data = LOAD '/home/cloudera/ejercicios/pig/datos_pig.txt' as (
 
 Usa el comando DESCRIBE para ver el esquema de la variable “data”.
 
-```
+```Pig Latin
 grunt> DESCRIBE data;
 data: {key: chararray,campana: chararray,fecha: chararray,tiempo: chararray,display: chararray,acction: int,cpc: int,pais: chararray,lugar: chararray}
 ```
 
 Selecciona las filas de “data” que provengan de USA.
 
-```
+```Pig Latin
 grunt> resusa = FILTER data BY pais == 'USA';
 ```
 
 Listar los datos que contengan en su key el sufijo surf:
 
-```
+```Pig Latin
 surf = FILTER data BY key == '^surf*';
 ```
 
 Crear una variable llamada “ordenado” que contenga las columnas de data en el siguiente orden: (campaña, fecha, tiempo, key, display, lugar, action, cpc).
 
-```
+```Pig Latin
 grunt> ordenado = FOREACH data GENERATE campana, fecha, tiempo, key, display, lugar, acction, cpc;
 ```
 
 Guarda el contenido de la variable “ordenado” en una carpeta en el local file system de tu MV llamada resultado en la ruta /home/cloudera/ejercicios/pig.
 
-```
+```Pig Latin
 grunt> STORE ordenado INTO '/home/cloudera/ejercicios/pig/ordenado';
 2022-03-25 14:38:16,941 [main] INFO  org.apache.pig.tools.pigstats.ScriptState - Pig features used in the script: UNKNOWN
 2022-03-25 14:38:16,978 [main] INFO  org.apache.pig.newplan.logical.optimizer.LogicalPlanOptimizer - {RULES_ENABLED=[AddForEach, ColumnMapKeyPrune, DuplicateForEachColumnRewrite, GroupByConstParallelSetter, ImplicitSplitInserter, LimitOptimizer, LoadTypeCastInserter, MergeFilter, MergeForEach, NewPartitionFilterOptimizer, PushDownForEachFlatten, PushUpFilter, SplitFilter, StreamTypeCastInserter], RULES_DISABLED=[FilterLogicExpressionSimplifier, PartitionFilterOptimizer]}
