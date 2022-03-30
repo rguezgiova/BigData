@@ -618,3 +618,283 @@ scala> finallog.take(100).foreach(println)
 (both,672)
 (even,652
 ```
+
+## Ejercicio: SparkSQL (JSON)
+
+Crea un nuevo contexto SQLContext.
+
+```
+scala> val sqlcontext = new org.apache.spark.sql.SQLContext(sc)
+sqlcontext: org.apache.spark.sql.SQLContext = org.apache.spark.sql.SQLContext@7881eb9b
+```
+
+Importa los implicits que permiten convertir RDDs en DataFrames.
+
+```
+scala> import sqlContext.implicits._
+import sqlContext.implicits._
+```
+
+Carga el dataset “zips.json” que se encuentra en la carpeta de ejercicios de Spark y que contiene datos de códigos postales de Estados Unidos.
+
+```
+scala> val cps = sqlcontext.load("file:/home/cloudera/BIT/data/zips.json", "json")
+warning: there were 1 deprecation warning(s); re-run with -deprecation for details
+cps: org.apache.spark.sql.DataFrame = [_id: string, city: string, loc: array<double>, pop: bigint, state: string]
+```
+
+Visualiza los datos con el comando “show()”. Tienes que ver una tabla con 5 columnas con un subconjunto de los datos del fichero.
+
+```
+scala> cps.show()
++-----+---------------+--------------------+-----+-----+
+|  _id|           city|                 loc|  pop|state|
++-----+---------------+--------------------+-----+-----+
+|01001|         AGAWAM|[-72.622739, 42.0...|15338|   MA|
+|01002|        CUSHMAN|[-72.51565, 42.37...|36963|   MA|
+|01005|          BARRE|[-72.108354, 42.4...| 4546|   MA|
+|01007|    BELCHERTOWN|[-72.410953, 42.2...|10579|   MA|
+|01008|      BLANDFORD|[-72.936114, 42.1...| 1240|   MA|
+|01010|      BRIMFIELD|[-72.188455, 42.1...| 3706|   MA|
+|01011|        CHESTER|[-72.988761, 42.2...| 1688|   MA|
+|01012|   CHESTERFIELD|[-72.833309, 42.3...|  177|   MA|
+|01013|       CHICOPEE|[-72.607962, 42.1...|23396|   MA|
+|01020|       CHICOPEE|[-72.576142, 42.1...|31495|   MA|
+|01022|   WESTOVER AFB|[-72.558657, 42.1...| 1764|   MA|
+|01026|     CUMMINGTON|[-72.905767, 42.4...| 1484|   MA|
+|01027|      MOUNT TOM|[-72.679921, 42.2...|16864|   MA|
+|01028|EAST LONGMEADOW|[-72.505565, 42.0...|13367|   MA|
+|01030|  FEEDING HILLS|[-72.675077, 42.0...|11985|   MA|
+|01031|   GILBERTVILLE|[-72.198585, 42.3...| 2385|   MA|
+|01032|         GOSHEN|[-72.844092, 42.4...|  122|   MA|
+|01033|         GRANBY|[-72.520001, 42.2...| 5526|   MA|
+|01034|        TOLLAND|[-72.908793, 42.0...| 1652|   MA|
+|01035|         HADLEY|[-72.571499, 42.3...| 4231|   MA|
++-----+---------------+--------------------+-----+-----+
+only showing top 20 rows
+```
+
+Obtén los códigos postales cuya población es superior a 10000 usando la api de DataFrames.
+
+```
+scala> cps.filter(cps("pop") > 10000).collect()
+res1: Array[org.apache.spark.sql.Row] = Array([01001,AGAWAM,WrappedArray(-72.622739, 42.070206),15338,MA], [01002,CUSHMAN,WrappedArray(-72.51565, 42.377017),36963,MA], [01007,BELCHERTOWN,WrappedArray(-72.410953, 42.275103),10579,MA], [01013,CHICOPEE,WrappedArray(-72.607962, 42.162046),23396,MA], [01020,CHICOPEE,WrappedArray(-72.576142, 42.176443),31495,MA], [01027,MOUNT TOM,WrappedArray(-72.679921, 42.264319),16864,MA], [01028,EAST LONGMEADOW,WrappedArray(-72.505565, 42.067203),13367,MA], [01030,FEEDING HILLS,WrappedArray(-72.675077, 42.07182),11985,MA], [01040,HOLYOKE,WrappedArray(-72.626193, 42.202007),43704,MA], [01056,LUDLOW,WrappedArray(-72.471012, 42.172823),18820,MA], [01060,FLORENCE,WrappedArray(-72.654245, 42.324662),27939,MA], [01075,SOUTH HADLEY,WrappedArray(-72.581137, 42.23...
+```
+
+Guarda esta tabla en un fichero temporal para poder ejecutar SQL contra ella.
+
+```
+scala> cps.registerTempTable("cps")
+```
+
+Realiza la misma consulta que anteriormente, pero esta vez usando SQL
+
+```
+scala> sqlcontext.sql("SELECT * FROM cps WHERE pop > 10000").collect()
+res3: Array[org.apache.spark.sql.Row] = Array([01001,AGAWAM,WrappedArray(-72.622739, 42.070206),15338,MA], [01002,CUSHMAN,WrappedArray(-72.51565, 42.377017),36963,MA], [01007,BELCHERTOWN,WrappedArray(-72.410953, 42.275103),10579,MA], [01013,CHICOPEE,WrappedArray(-72.607962, 42.162046),23396,MA], [01020,CHICOPEE,WrappedArray(-72.576142, 42.176443),31495,MA], [01027,MOUNT TOM,WrappedArray(-72.679921, 42.264319),16864,MA], [01028,EAST LONGMEADOW,WrappedArray(-72.505565, 42.067203),13367,MA], [01030,FEEDING HILLS,WrappedArray(-72.675077, 42.07182),11985,MA], [01040,HOLYOKE,WrappedArray(-72.626193, 42.202007),43704,MA], [01056,LUDLOW,WrappedArray(-72.471012, 42.172823),18820,MA], [01060,FLORENCE,WrappedArray(-72.654245, 42.324662),27939,MA], [01075,SOUTH HADLEY,WrappedArray(-72.581137, 42.23...
+```
+
+Usando SQL, obtén la ciudad con más de 100 códigos postales.
+
+```
+scala> sqlcontext.sql("SELECT city FROM cps GROUP BY city HAVING COUNT(*) > 100").show()
++-------+                                                                       
+|   city|
++-------+
+|HOUSTON|
++-------+
+```
+
+Usando SQL, obtén la población del estado de Wisconsin (WI).
+
+```
+scala> sqlcontext.sql("SELECT SUM(pop) AS poblacion FROM cps WHERE state = 'WI'").show()
++---------+
+|poblacion|
++---------+
+|  4891769|
++---------+
+```
+
+Usando SQL, obtén los 5 estados más poblados.
+
+```
+scala> sqlcontext.sql("SELECT state, SUM(pop) AS poblacion FROM cps GROUP BY state ORDER BY SUM(pop) LIMIT 5").show()
++-----+---------+
+|state|poblacion|
++-----+---------+
+|   WY|   453588|
+|   AK|   550043|
+|   VT|   562758|
+|   DC|   606900|
+|   ND|   638800|
++-----+---------+
+```
+
+## Ejercicio: SparkSQL (hive)
+
+Arrancar el Shell de Spark, y a través de SparkSQL crear una base de datos y una tabla con dos o tres columnas.
+
+```
+scala> val sqlcontext = new org.apache.spark.sql.hive.HiveContext(sc)
+sqlcontext: org.apache.spark.sql.hive.HiveContext = org.apache.spark.sql.hive.HiveContext@4c1d12b6
+
+scala> sqlcontext.sql("CREATE DATABASE hivespark")
+res0: org.apache.spark.sql.DataFrame = [result: string]
+
+scala> sqlcontext.sql("CREATE TABLE hivespark.empleados(id INT, name STRING, age INT) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'")
+res1: org.apache.spark.sql.DataFrame = [result: string]
+```
+
+Crear un fichero “/home/cloudera/empleado.txt” que contenga los siguientes datos.
+
+```bash
+[cloudera@quickstart ~]$ cat empleados.txt
+1000, Jose, 30
+1001, Luis, 25
+1002, Pedro, 34
+1003, Laura, 22
+1004, David, 39
+```
+
+Aprovechando la estructura de la tabla que hemos creado antes, usando SparkSQL, subid los datos del fichero “/home/cloudera/empleado.txt” a la tabla hive, usando como la sintaxis de HiveQL.
+
+```
+scala> sqlcontext.sql("LOAD DATA LOCAL INPATH '/home/cloudera/empleados.txt' INTO TABLE hivespark.empleados")
+res2: org.apache.spark.sql.DataFrame = [result: string]
+```
+
+
+
+```
+scala> val empleados = sqlcontext.sql("SELECT * FROM hivespark.empleados")
+empleados: org.apache.spark.sql.DataFrame = [id: int, name: string, age: int]
+
+scala>  empleados.show()
++----+------+----+
+|  id|  name| age|
++----+------+----+
+|1000|  Jose|null|
+|1001|  Luis|null|
+|1002| Pedro|null|
+|1003| Laura|null|
+|1004| David|null|
++----+------+----+
+
+hive> SELECT * FROM hivespark.empleados;
+OK
+1000	 Jose	NULL
+1001	 Luis	NULL
+1002	 Pedro	NULL
+1003	 Laura	NULL
+1004	 David	NULL
+Time taken: 0.826 seconds, Fetched: 5 row(s)
+```
+
+## Ejercicio: SparkSQL (DataFrames)
+
+Creamos un contexto SQL.
+
+```
+scala> val sqlcontext = new org.apache.spark.sql.SQLContext(sc)
+sqlcontext: org.apache.spark.sql.SQLContext = org.apache.spark.sql.SQLContext@e2f35fc
+```
+
+Importa los implicits que permiten convertir RDDs en DataFrames y Row.
+
+```
+scala> import sqlContext.implicits._
+import sqlContext.implicits._
+
+scala> import org.apache.spark.sql.Row
+import org.apache.spark.sql.Row
+
+scala> import org.apache.spark.sql.types.{StructType,StructField,StringType}
+import org.apache.spark.sql.types.{StructType, StructField, StringType}
+```
+
+Creamos una variable con la ruta al fichero “/home/BIT/data/DataSetPartidos.txt”.
+
+```
+scala> val ruta = "file:/home/cloudera/BIT/data/DataSetPartidos.txt"
+ruta: String = file:/home/clouedera/BIT/data/DataSetPartidos.txt
+```
+
+Leemos el contenido del archivo en una variable.
+
+```
+scala> val data = sc.textFile(ruta)
+data: org.apache.spark.rdd.RDD[String] = file:/home/clouedera/BIT/data/DataSetPartidos.txt MapPartitionsRDD[8] at textFile at <console>:34
+```
+
+Creamos una variable que contenga el esquema de los datos.
+
+```
+scala> val schema = "idPartido::temporada::jornada::equipoLocal::equipoVisitante::golesLocal::golesVisitante::fecha::timestamp"
+schema: String = idPartido::temporada::jornada::equipoLocal::equipoVisitante::golesLocal::golesVisitante::fecha::timestamp
+```
+
+Generamos el esquema basado en la variable que contiene el esquema de los datos que acabamos de crear.
+
+```
+scala> val tableSchema = StructType(schema.split("::").map(field => StructField(field, StringType, true)))
+tableSchema: org.apache.spark.sql.types.StructType = StructType(StructField(idPartido,StringType,true), StructField(temporada,StringType,true), StructField(jornada,StringType,true), StructField(equipoLocal,StringType,true), StructField(equipoVisitante,StringType,true), StructField(golesLocal,StringType,true), StructField(golesVisitante,StringType,true), StructField(fecha,StringType,true), StructField(timestamp,StringType,true))
+```
+
+Convertimos las filas de nuestro RDD a Rows.
+
+```
+scala> val rows = data.map(_.split("::")).map(field => Row(field(0), field(1), field(2), field(3), field(4), field(5), field(6), field(7), field(8).trim))
+rows: org.apache.spark.rdd.RDD[org.apache.spark.sql.Row] = MapPartitionsRDD[10] at map at <console>:36
+```
+
+Aplicamos el Schema al RDD.
+
+```
+scala> val dataFrame = sqlContext.createDataFrame(rows, tableSchema)
+dataFrame: org.apache.spark.sql.DataFrame = [idPartido: string, temporada: string, jornada: string, equipoLocal: string, equipoVisitante: string, golesLocal: string, golesVisitante: string, fecha: string, timestamp: string]
+```
+
+Registramos el DataFrame como una Tabla.
+
+```
+scala> dataFrame.registerTempTable("games")
+```
+
+¿Cuál es el record de goles como visitante en una temporada del Oviedo?
+
+```
+scala> val recordGoals = sqlContext.sql("SELECT SUM(golesVisitante) AS goals FROM games WHERE equipoVisitante = 'Real Oviedo'")
+recordGoals: org.apache.spark.sql.DataFrame = [goals: double]
+
+scala> recordGoals.show()
++-----+                                                                         
+|goals|
++-----+
+|490.0|
++-----+
+```
+
+¿Quién ha estado más temporadas en 1 Division Sporting u Oviedo?
+
+```
+scala> val tempSporting = sqlContext.sql("SELECT COUNT(DISTINCT(temporada)) as temporadas FROM games WHERE equipoLocal = 'Sporting de Gijon' OR equipoVisitante = 'Sporting de Gijon'")
+tempSporting: org.apache.spark.sql.DataFrame = [temporadas: bigint]
+
+scala> val tempOviedo = sqlContext.sql("SELECT COUNT(DISTINCT(temporada)) as temporadas FROM games WHERE equipoLocal = 'Real Oviedo' OR equipoVisitante = 'Real Oviedo'")
+tempOviedo: org.apache.spark.sql.DataFrame = [temporadas: bigint]
+
+scala> tempSporting.show()
++----------+                                                                    
+|temporadas|
++----------+
+|        45|
++----------+
+
+scala> tempOviedo.show()
++----------+                                                                    
+|temporadas|
++----------+
+|        32|
++----------+
+```
