@@ -906,3 +906,146 @@ Utilizando la terminal, introduce el dataset 'simpsons.csv' en el HDFS.
 ```bash
 [cloudera@quickstart ~]$ hdfs dfs -put "/home/cloudera/BIT/data/simpsons.csv" /user/cloudera
 ```
+
+## Ejercicio: Spark Streaming I
+
+Abre un terminal nuevo y escribe el siguiente comando:
+
+```bash
+[cloudera@quickstart ~]$ nc -lkv 4444
+```
+
+Inicia un nuevo terminal y arranca el Shell de Spark en modo local con al menos 2 threads.
+
+```
+[cloudera@quickstart ~]$ spark-shell --master local[2]
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel).
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/usr/lib/zookeeper/lib/slf4j-log4j12-1.7.5.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/lib/flume-ng/lib/slf4j-log4j12-1.7.5.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/lib/parquet/lib/slf4j-log4j12-1.7.5.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/lib/avro/avro-tools-1.7.6-cdh5.13.0.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.slf4j.impl.Log4jLoggerFactory]
+Welcome to
+      ____              __
+     / __/__  ___ _____/ /__
+    _\ \/ _ \/ _ `/ __/  '_/
+   /___/ .__/\_,_/_/ /_/\_\   version 1.6.0
+      /_/
+
+Using Scala version 2.10.5 (Java HotSpot(TM) 64-Bit Server VM, Java 1.7.0_67)
+Type in expressions to have them evaluated.
+Type :help for more information.
+22/03/31 10:35:04 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Spark context available as sc (master = local[2], app id = local-1648715705904).
+22/03/31 10:35:08 WARN shortcircuit.DomainSocketFactory: The short-circuit local reads feature cannot be used because libhadoop cannot be loaded.
+SQL context available as sqlContext.
+```
+
+Crea un SparkContext con una duración de 5 segundos.
+
+```
+scala> val sparkcontext = new StreamingContext(sc, Seconds(5))
+sparkcontext: org.apache.spark.streaming.StreamingContext = org.apache.spark.streaming.StreamingContext@2b97cb23
+```
+
+Crea un DStream para leer texto del puerto que pusiste en el comando “nc”, especificando el hostname de nuestra máquina.
+```
+scala> val dstream = sparkcontext.socketTextStream("localhost", 4444)
+dstream: org.apache.spark.streaming.dstream.ReceiverInputDStream[String] = org.apache.spark.streaming.dstream.SocketInputDStream@37165b02
+```
+
+Crea un MapReduce para contar el número de palabras que aparecen en cada Stream.
+
+```
+scala> val wordslist = dstream.flatMap(line => line.split(" "))
+wordslist: org.apache.spark.streaming.dstream.DStream[String] = org.apache.spark.streaming.dstream.FlatMappedDStream@62becb78
+
+scala> val wordscount = wordslist.map(word => (word,1)).reduceByKey((k,v) => k + v)
+wordscount: org.apache.spark.streaming.dstream.DStream[(String, Int)] = org.apache.spark.streaming.dstream.ShuffledDStream@208e7f0
+```
+
+Imprime por pantalla los resultados de cada batch
+
+```
+scala> wordscount.print()
+```
+
+Arranca el Streaming Context y llama a awaitTermination para esperar a que la tarea termine.
+
+```
+scala> sparkcontext.start()
+
+scala> sparkcontext.awaitTermination()
+```
+
+Deberías ver algo de este tipo:
+
+```
+-------------------------------------------
+Time: 1648719160000 ms
+-------------------------------------------
+(Alo,1)
+(Probando,2)
+(Tal,1)
+(Que,1)
+```
+
+## Ejercicio: Spark Streaming II
+
+Abre un nuevo terminal y arranca el Shell de Spark con al menos dos threads, ejecuta los imports y crea un nuevo StreamingContext con intervalos de un segundo.
+
+```
+[cloudera@quickstart ~]$ spark-shell –master local[2]
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel).
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/usr/lib/zookeeper/lib/slf4j-log4j12-1.7.5.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/lib/flume-ng/lib/slf4j-log4j12-1.7.5.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/lib/parquet/lib/slf4j-log4j12-1.7.5.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/lib/avro/avro-tools-1.7.6-cdh5.13.0.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.slf4j.impl.Log4jLoggerFactory]
+Welcome to
+      ____              __
+     / __/__  ___ _____/ /__
+    _\ \/ _ \/ _ `/ __/  '_/
+   /___/ .__/\_,_/_/ /_/\_\   version 1.6.0
+      /_/
+
+Using Scala version 2.10.5 (Java HotSpot(TM) 64-Bit Server VM, Java 1.7.0_67)
+Type in expressions to have them evaluated.
+Type :help for more information.
+22/03/31 12:59:15 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Spark context available as sc (master = local[*], app id = local-1648724357145).
+22/03/31 12:59:19 WARN shortcircuit.DomainSocketFactory: The short-circuit local reads feature cannot be used because libhadoop cannot be loaded.
+SQL context available as sqlContext.
+
+scala> import org.apache.spark.streaming.StreamingContext
+import org.apache.spark.streaming.StreamingContext
+
+scala> import org.apache.spark.streaming.StreamingContext._
+import org.apache.spark.streaming.StreamingContext._
+
+scala> import org.apache.spark.streaming.Seconds
+import org.apache.spark.streaming.Seconds
+
+scala> val streamcontext = new StreamingContext(sc, Seconds(5))
+streamcontext: org.apache.spark.streaming.StreamingContext = org.apache.spark.streaming.StreamingContext@223ab38d
+```
+
+Crea un DStream de logs.
+
+```
+scala> val dstream = streamcontext.socketTextStream("localhost", 4444)
+dstream: org.apache.spark.streaming.dstream.ReceiverInputDStream[String] = org.apache.spark.streaming.dstream.SocketInputDStream@10d40513
+```
+
+Filtra las líneas del Stream que contengan la cadena de caracteres “KBDOC”.
+
+```
+scala> val lines = dstream.filter(line => line.contains("KBDOC"))
+lines: org.apache.spark.streaming.dstream.DStream[String] = org.apache.spark.streaming.dstream.FilteredDStream@3237891d
+```
